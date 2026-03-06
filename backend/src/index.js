@@ -12,6 +12,7 @@ const codesRouter = require('./routes/codes');
 const scanRouter = require('./routes/scan');
 const notificationsRouter = require('./routes/notifications');
 const consentRouter = require('./routes/consent');
+const layoutsRouter = require('./routes/layouts');
 const { flushNotificationQueue } = require('./services/dispatcher');
 
 const app = express();
@@ -56,6 +57,7 @@ app.use('/api/codes', apiLimiter, codesRouter);
 app.use('/api/notifications', apiLimiter, notificationsRouter);
 // Consent + membership routes — mounted at /api for clean paths like /api/tokens/:id/invite
 app.use('/api', apiLimiter, consentRouter);
+app.use('/api/layouts', apiLimiter, layoutsRouter);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));

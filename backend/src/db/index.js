@@ -127,6 +127,27 @@ db.exec(`
     message_template TEXT NOT NULL,
     UNIQUE(token_id, channel)
   );
+  -- Notifier app: named layouts (shared via a short code)
+  CREATE TABLE IF NOT EXISTS notifier_layouts (
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    share_code  TEXT UNIQUE NOT NULL,  -- short human-readable code e.g. "ABC123"
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Buttons within a layout: either a scan token or a link to another layout
+  CREATE TABLE IF NOT EXISTS layout_buttons (
+    id                TEXT PRIMARY KEY,
+    layout_id         TEXT NOT NULL REFERENCES notifier_layouts(id) ON DELETE CASCADE,
+    button_type       TEXT NOT NULL DEFAULT 'token' CHECK(button_type IN ('token','layout')),
+    label             TEXT,
+    color             TEXT DEFAULT '#dbeafe',
+    scan_token        TEXT,                   -- for button_type = 'token'
+    target_layout_id  TEXT REFERENCES notifier_layouts(id) ON DELETE SET NULL, -- for button_type = 'layout'
+    sort_order        INTEGER NOT NULL DEFAULT 0,
+    created_at        TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
   -- Delayed/queued notifications (for vacation mode)
   CREATE TABLE IF NOT EXISTS notification_queue (
     id             TEXT PRIMARY KEY,

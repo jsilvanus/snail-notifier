@@ -1,23 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
-
-const API_BASE = '/api';
-const STORAGE_KEY = 'snail_notifier_board';
-
-// Each entry: { id, scanToken, label, title, behavior, color, page }
-// Colors for token buttons
-const COLORS = ['#dbeafe', '#dcfce7', '#fef9c3', '#fce7f3', '#f3e8ff', '#ffedd5', '#e0f2fe', '#d1fae5'];
-
-function loadBoard() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { tokens: [], pageCount: 1, currentPage: 0 };
-  } catch { return { tokens: [], pageCount: 1, currentPage: 0 }; }
-}
-
-function saveBoard(board) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(board));
-}
+import { useNavigate, useParams } from 'react-router-dom';
+import { api, addSavedLayout } from '../api.js';
 
 function FormModal({ info, onClose, onDone }) {
   const [responses, setResponses] = useState({});
@@ -27,14 +10,11 @@ function FormModal({ info, onClose, onDone }) {
     e.preventDefault();
     setSubmitting(true);
     try {
-      const res = await fetch(`${API_BASE}/scan/${info.scanToken}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ responses }),
-      });
-      const data = await res.json();
-      onDone(res.ok ? 'Notification sent!' : (data.error || 'Error'));
-    } catch { onDone('Network error'); }
+      const data = await api.submitForm(info.scanToken, responses);
+      onDone('Notification sent!');
+    } catch (err) {
+      onDone(err.message || 'Error sending notification');
+    }
     setSubmitting(false);
   }
 
@@ -68,25 +48,63 @@ function FormModal({ info, onClose, onDone }) {
   );
 }
 
-export default function Board() {
-  const navigate = useNavigate();
-  const [board, setBoard] = useState(loadBoard);
-  const [formInfo, setFormInfo] = useState(null);
-  const [toast, setToast] = useState('');
-  const [dragging, setDragging] = useState(null); // { tokenId }
-  const [dragOver, setDragOver] = useState(null);
-  const touchStartX = useRef(null);
-  const toastTimer = useRef(null);
-
-  const { tokens, pageCount, currentPage } = board;
-
-  function update(patch) {
-    setBoard(b => {
-      const next = { ...b, ...patch };
-      saveBoard(next);
-      return next;
+function ShareModal({ shareCode, onClose }) {
+  const [copied, setCopied] = useState(false);
+  function copy() {
+    navigator.clipboard.writeText(shareCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
     });
   }
+  return (
+    <div className="modal-bg" onClick={e => e.target === e.currentTarget && onClose()}>
+      <div className="modal-box">
+        <h3 style={{ marginBottom: '.75rem' }}>Share this Layout</h3>
+        <p style={{ color: 'var(--muted)', fontSize: '.875rem', marginBottom: '1rem' }}>
+          Anyone with this code can view and edit this layout.
+        </p>
+        <div style={{ fontFamily: 'monospace', fontSize: '2rem', fontWeight: 700, textAlign: 'center', letterSpacing: '.2em', padding: '1rem', background: 'var(--bg)', borderRadius: 12, marginBottom: '1rem' }}>
+          {shareCode}
+        </div>
+        <div style={{ display: 'flex', gap: '.5rem' }}>
+          <button className="btn btn-primary" style={{ flex: 1 }} onClick={copy}>
+            {copied ? '✓ Copied!' : 'Copy Code'}
+          </button>
+          <button className="btn btn-ghost" onClick={onClose}>Close</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default function Board() {
+  const { shareCode } = useParams();
+  const navigate = useNavigate();
+
+  const [layout, setLayout] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [formInfo, setFormInfo] = useState(null);
+  const [showShare, setShowShare] = useState(false);
+  const [toast, setToast] = useState('');
+  const toastTimer = useRef(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
+    try {
+      const data = await api.getLayout(shareCode);
+      setLayout(data);
+      // Auto-save to local state so it appears in LayoutList
+      addSavedLayout(data.share_code, data.name);
+    } catch (err) {
+      setError('Layout not found or could not be loaded.');
+    } finally {
+      setLoading(false);
+    }
+  }, [shareCode]);
+
+  useEffect(() => { load(); }, [load]);
 
   function showToast(msg) {
     setToast(msg);
@@ -94,17 +112,17 @@ export default function Board() {
     toastTimer.current = setTimeout(() => setToast(''), 2500);
   }
 
-  async function handleTrigger(tk) {
+  async function handleTrigger(btn) {
     try {
-      const res = await fetch(`${API_BASE}/scan/${tk.scanToken}`);
-      const data = await res.json();
-      if (!res.ok) { showToast(data.error || 'Error'); return; }
+      const data = await api.triggerScan(btn.scan_token);
       if (data.behavior === 'data_input') {
-        setFormInfo({ scanToken: tk.scanToken, title: tk.title || tk.label, description: data.description, tokenName: data.tokenName, fields: data.fields });
+        setFormInfo({ scanToken: btn.scan_token, title: btn.label || data.title, description: data.description, tokenName: data.tokenName, fields: data.fields });
       } else {
         showToast('Notification sent!');
       }
-    } catch { showToast('Network error'); }
+    } catch (err) {
+      showToast(err.message || 'Error');
+    }
   }
 
   function handleFormDone(msg) {
@@ -112,110 +130,98 @@ export default function Board() {
     showToast(msg);
   }
 
-  function removeToken(id) {
-    update({ tokens: tokens.filter(t => t.id !== id) });
+  if (loading) {
+    return (
+      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+        <header>
+          <button className="btn btn-ghost" style={{ fontSize: '.85rem', padding: '.35rem .75rem' }} onClick={() => navigate('/')}>← Back</button>
+          <span className="brand" style={{ flex: 1, textAlign: 'center' }}>Loading…</span>
+          <span style={{ width: 80 }} />
+        </header>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--muted)' }}>Loading layout…</div>
+      </div>
+    );
   }
 
-  function addPage() {
-    update({ pageCount: pageCount + 1, currentPage: pageCount });
+  if (error) {
+    return (
+      <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
+        <header>
+          <button className="btn btn-ghost" style={{ fontSize: '.85rem', padding: '.35rem .75rem' }} onClick={() => navigate('/')}>← Back</button>
+          <span className="brand" style={{ flex: 1, textAlign: 'center' }}>Error</span>
+          <span style={{ width: 80 }} />
+        </header>
+        <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: '1rem', padding: '1rem' }}>
+          <p style={{ color: '#dc2626' }}>{error}</p>
+          <button className="btn btn-ghost" onClick={() => navigate('/')}>← Back to Layouts</button>
+        </div>
+      </div>
+    );
   }
 
-  function removePage() {
-    if (pageCount <= 1) return;
-    const newPage = Math.min(currentPage, pageCount - 2);
-    update({
-      tokens: tokens.filter(t => t.page !== currentPage).map(t => ({ ...t, page: t.page > currentPage ? t.page - 1 : t.page })),
-      pageCount: pageCount - 1,
-      currentPage: newPage,
-    });
-  }
-
-  // Swipe to change page
-  function onTouchStart(e) { touchStartX.current = e.touches[0].clientX; }
-  function onTouchEnd(e) {
-    if (touchStartX.current === null) return;
-    const dx = e.changedTouches[0].clientX - touchStartX.current;
-    if (Math.abs(dx) > 60) {
-      if (dx < 0 && currentPage < pageCount - 1) update({ currentPage: currentPage + 1 });
-      if (dx > 0 && currentPage > 0) update({ currentPage: currentPage - 1 });
-    }
-    touchStartX.current = null;
-  }
-
-  // Drag and drop (HTML5)
-  function onDragStart(tokenId) { setDragging(tokenId); }
-  function onDragEnd() { setDragging(null); setDragOver(null); }
-  function onDrop(targetId) {
-    if (!dragging || dragging === targetId) return;
-    const src = tokens.findIndex(t => t.id === dragging);
-    const dst = tokens.findIndex(t => t.id === targetId);
-    if (src === -1 || dst === -1) return;
-    const next = [...tokens];
-    const [item] = next.splice(src, 1);
-    next.splice(dst, 0, item);
-    update({ tokens: next });
-  }
-
-  const pageTokens = tokens.filter(t => t.page === currentPage);
+  const buttons = layout?.buttons || [];
 
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
       <header>
-        <span className="brand">📬 Notifier</span>
-        <div style={{ flex: 1 }} />
-        <div style={{ display: 'flex', gap: '.5rem', alignItems: 'center', fontSize: '.8rem', color: 'var(--muted)' }}>
-          <span>Page {currentPage + 1}/{pageCount}</span>
-          <button className="btn btn-ghost" style={{ fontSize: '.75rem', padding: '.3rem .6rem' }} onClick={addPage}>+ Page</button>
-          {pageCount > 1 && (
-            <button className="btn btn-danger" style={{ fontSize: '.75rem', padding: '.3rem .6rem' }} onClick={removePage}>− Page</button>
-          )}
+        <button className="btn btn-ghost" style={{ fontSize: '.85rem', padding: '.35rem .75rem' }} onClick={() => navigate('/')}>← Back</button>
+        <span className="brand" style={{ flex: 1, textAlign: 'center', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          {layout?.name}
+        </span>
+        <div style={{ display: 'flex', gap: '.4rem' }}>
+          <button className="btn btn-ghost" style={{ fontSize: '.75rem', padding: '.3rem .6rem' }} onClick={() => setShowShare(true)} title="Share">
+            🔗
+          </button>
+          <button className="btn btn-ghost" style={{ fontSize: '.75rem', padding: '.3rem .6rem' }} onClick={() => navigate(`/board/${shareCode}/edit`)} title="Edit layout">
+            ✏️
+          </button>
         </div>
       </header>
 
-      {/* Button board */}
-      <div className="board-wrap" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <div className="pages-track" style={{ transform: `translateX(-${currentPage * 100}%)` }}>
-          {Array.from({ length: pageCount }, (_, p) => (
-            <div key={p} className="page-panel">
-              {tokens.filter(t => t.page === p).map(tk => (
+      <div className="board-wrap">
+        <div className="page-panel" style={{ height: '100%' }}>
+          {buttons.map(btn => {
+            if (btn.button_type === 'layout') {
+              return (
                 <div
-                  key={tk.id}
-                  className={`token-btn${dragging === tk.id ? ' dragging' : ''}${dragOver === tk.id ? ' drag-over' : ''}`}
-                  style={{ background: tk.color || '#f1f5f9' }}
-                  draggable
-                  onDragStart={() => onDragStart(tk.id)}
-                  onDragEnd={onDragEnd}
-                  onDragOver={e => { e.preventDefault(); setDragOver(tk.id); }}
-                  onDrop={() => onDrop(tk.id)}
-                  onClick={() => handleTrigger(tk)}
+                  key={btn.id}
+                  className="token-btn"
+                  style={{ background: btn.color || '#f3e8ff' }}
+                  onClick={() => {
+                    if (btn.target_share_code) {
+                      navigate(`/board/${btn.target_share_code}`);
+                    }
+                  }}
                 >
-                  <button className="remove-btn" onClick={e => { e.stopPropagation(); removeToken(tk.id); }}>✕</button>
-                  <span className="icon">{tk.behavior === 'data_input' ? '📝' : '📬'}</span>
-                  <span className="label">{tk.title || tk.label}</span>
-                  {tk.label !== tk.title && tk.label && <span className="sub">{tk.label}</span>}
+                  <span className="icon">📋</span>
+                  <span className="label">{btn.label || btn.target_name || 'Layout'}</span>
+                  {btn.target_share_code && (
+                    <span className="sub" style={{ fontFamily: 'monospace' }}>{btn.target_share_code}</span>
+                  )}
                 </div>
-              ))}
-              {/* Add button — only on current page */}
-              {p === currentPage && (
-                <div className="token-btn add-btn" onClick={() => navigate(`/add?page=${p}`)}>+</div>
-              )}
-            </div>
-          ))}
+              );
+            }
+            // token button
+            return (
+              <div
+                key={btn.id}
+                className="token-btn"
+                style={{ background: btn.color || '#dbeafe' }}
+                onClick={() => handleTrigger(btn)}
+              >
+                <span className="icon">📬</span>
+                <span className="label">{btn.label || btn.scan_token}</span>
+              </div>
+            );
+          })}
+
+          {/* Add button */}
+          <div className="token-btn add-btn" onClick={() => navigate(`/add/${shareCode}`)}>+</div>
         </div>
       </div>
 
-      {/* Page dots */}
-      <div className="page-dots">
-        {Array.from({ length: pageCount }, (_, i) => (
-          <button key={i} className={`page-dot${i === currentPage ? ' active' : ''}`} onClick={() => update({ currentPage: i })} />
-        ))}
-      </div>
-
-      {/* Form modal */}
       {formInfo && <FormModal info={formInfo} onClose={() => setFormInfo(null)} onDone={handleFormDone} />}
-
-      {/* Toast */}
+      {showShare && <ShareModal shareCode={shareCode} onClose={() => setShowShare(false)} />}
       {toast && <div className="toast">{toast}</div>}
     </div>
   );

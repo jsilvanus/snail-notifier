@@ -1,27 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams } from 'react-router-dom';
+import { api } from '../api.js';
 
-const API_BASE = '/api';
-const STORAGE_KEY = 'snail_notifier_board';
 const COLORS = ['#dbeafe', '#dcfce7', '#fef9c3', '#fce7f3', '#f3e8ff', '#ffedd5', '#e0f2fe', '#d1fae5'];
-
-function loadBoard() {
-  try { const r = localStorage.getItem(STORAGE_KEY); return r ? JSON.parse(r) : { tokens: [], pageCount: 1, currentPage: 0 }; }
-  catch { return { tokens: [], pageCount: 1, currentPage: 0 }; }
-}
-function saveBoard(b) { localStorage.setItem(STORAGE_KEY, JSON.stringify(b)); }
 
 function randomColor() { return COLORS[Math.floor(Math.random() * COLORS.length)]; }
 
-async function fetchTokenInfo(scanToken) {
-  const res = await fetch(`${API_BASE}/scan/${scanToken}/info`);
-  if (!res.ok) throw new Error('Token not found');
-  return res.json();
-}
-
 function extractScanToken(raw) {
-  // Raw may be a full URL like http://localhost:3001/api/scan/abc-123
-  // or just the bare token
   const m = raw.match(/\/api\/scan\/([^/?#]+)/);
   return m ? m[1] : raw.trim();
 }
@@ -120,16 +105,16 @@ async function startNFCScan(onScanned, onError) {
 // ── Main Page ────────────────────────────────────────────────────────────────
 
 export default function AddToken() {
+  const { shareCode } = useParams();
   const navigate = useNavigate();
-  const [params] = useSearchParams();
-  const targetPage = parseInt(params.get('page') || '0', 10);
 
   const [mode, setMode] = useState('menu'); // menu | qr | nfc | manual | preview
   const [manualInput, setManualInput] = useState('');
-  const [preview, setPreview] = useState(null); // token info
+  const [preview, setPreview] = useState(null);
   const [customLabel, setCustomLabel] = useState('');
   const [color, setColor] = useState(randomColor);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const nfcReaderRef = useRef(null);
 
@@ -139,7 +124,7 @@ export default function AddToken() {
     setLoading(true);
     setError('');
     try {
-      const info = await fetchTokenInfo(scanToken);
+      const info = await api.getTokenInfo(scanToken);
       setPreview({ ...info, scanToken });
       setCustomLabel(info.title || info.name || '');
       setMode('preview');
@@ -157,7 +142,6 @@ export default function AddToken() {
   }
 
   function stopNFC() {
-    // NDEFReader has no explicit stop; navigate away to unmount
     setMode('menu');
   }
 
@@ -166,20 +150,19 @@ export default function AddToken() {
     await handleScanned(manualInput);
   }
 
-  function handleAdd() {
-    const board = loadBoard();
-    const newToken = {
-      id: crypto.randomUUID(),
-      scanToken: preview.scanToken,
-      label: customLabel || preview.title || preview.name,
-      title: preview.title || preview.name,
-      behavior: preview.behavior,
-      color,
-      page: targetPage,
-    };
-    board.tokens.push(newToken);
-    saveBoard(board);
-    navigate('/');
+  async function handleAdd() {
+    setSaving(true);
+    try {
+      await api.addTokenButton(shareCode, {
+        scan_token: preview.scanToken,
+        label: customLabel || preview.title || preview.name || undefined,
+        color,
+      });
+      navigate(`/board/${shareCode}`);
+    } catch (err) {
+      setError(`Failed to add button: ${err.message}`);
+      setSaving(false);
+    }
   }
 
   if (mode === 'qr') {
@@ -189,8 +172,8 @@ export default function AddToken() {
   return (
     <div style={{ height: '100dvh', display: 'flex', flexDirection: 'column' }}>
       <header>
-        <button className="btn btn-ghost" style={{ fontSize: '.85rem', padding: '.35rem .75rem' }} onClick={() => navigate('/')}>← Back</button>
-        <span className="brand" style={{ flex: 1, textAlign: 'center' }}>Add Token</span>
+        <button className="btn btn-ghost" style={{ fontSize: '.85rem', padding: '.35rem .75rem' }} onClick={() => navigate(`/board/${shareCode}`)}>← Back</button>
+        <span className="brand" style={{ flex: 1, textAlign: 'center' }}>Add Token Button</span>
         <span style={{ width: 80 }} />
       </header>
 
@@ -214,8 +197,11 @@ export default function AddToken() {
                 ))}
               </div>
             </div>
+            {error && <p style={{ color: '#dc2626', fontSize: '.875rem', marginBottom: '.5rem' }}>{error}</p>}
             <div style={{ display: 'flex', gap: '.5rem', marginTop: '.5rem' }}>
-              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAdd}>Add to Board</button>
+              <button className="btn btn-primary" style={{ flex: 1 }} onClick={handleAdd} disabled={saving}>
+                {saving ? 'Adding…' : 'Add to Layout'}
+              </button>
               <button className="btn btn-ghost" onClick={() => setMode('menu')}>Cancel</button>
             </div>
           </div>
@@ -242,8 +228,7 @@ export default function AddToken() {
             <div className="card">
               <h4 style={{ marginBottom: '.75rem', color: 'var(--muted)', fontSize: '.875rem' }}>Or enter scan URL / token manually</h4>
               <form onSubmit={handleManualSubmit} style={{ display: 'flex', gap: '.5rem' }}>
-                <input value={manualInput} onChange={e => setManualInput(e.target.value)}
-                  placeholder="Paste scan URL or token…" required />
+                <input value={manualInput} onChange={e => setManualInput(e.target.value)} placeholder="Paste scan URL or token…" required />
                 <button className="btn btn-primary" type="submit" style={{ whiteSpace: 'nowrap' }}>Add</button>
               </form>
             </div>
