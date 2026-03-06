@@ -386,3 +386,81 @@ describe('Channel prefs and user channels', () => {
     expect(res.body.find(c => c.channel === 'sms')).toBeDefined();
   });
 });
+
+describe('Code metadata and channel messages', () => {
+  let orgToken, codeId;
+
+  beforeAll(async () => {
+    const org = await request(app).post('/api/auth/org/register').send({
+      orgName: 'Meta Org', name: 'Admin', email: 'meta@test.org', password: 'pass',
+    });
+    orgToken = org.body.token;
+    const code = await request(app).post('/api/codes')
+      .set('Authorization', `Bearer ${orgToken}`)
+      .send({ name: 'Meta Token', type: 'NFC', title: 'My Token', description: 'A test token', notification_message: '{NAME} wants to notify you.' });
+    codeId = code.body.id;
+  });
+
+  it('creates code with title and description', async () => {
+    const codes = await request(app).get('/api/codes').set('Authorization', `Bearer ${orgToken}`);
+    const code = codes.body.find(c => c.id === codeId);
+    expect(code.title).toBe('My Token');
+    expect(code.description).toBe('A test token');
+    expect(code.notification_message).toBe('{NAME} wants to notify you.');
+  });
+
+  it('patches code metadata', async () => {
+    const res = await request(app)
+      .patch(`/api/codes/${codeId}`)
+      .set('Authorization', `Bearer ${orgToken}`)
+      .send({ title: 'Updated Title' });
+    expect(res.status).toBe(200);
+  });
+
+  it('sets a channel message template', async () => {
+    const res = await request(app)
+      .put(`/api/codes/${codeId}/messages`)
+      .set('Authorization', `Bearer ${orgToken}`)
+      .send({ channel: 'email', message_template: '{NAME} says hi via email.' });
+    expect(res.status).toBe(200);
+  });
+
+  it('lists channel message templates', async () => {
+    const res = await request(app)
+      .get(`/api/codes/${codeId}/messages`)
+      .set('Authorization', `Bearer ${orgToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.find(m => m.channel === 'email')).toBeDefined();
+  });
+
+  it('sets general channel message', async () => {
+    const res = await request(app)
+      .put(`/api/codes/${codeId}/messages`)
+      .set('Authorization', `Bearer ${orgToken}`)
+      .send({ channel: 'general', message_template: '{NAME} wants to notify you.' });
+    expect(res.status).toBe(200);
+  });
+
+  it('rejects unknown channel', async () => {
+    const res = await request(app)
+      .put(`/api/codes/${codeId}/messages`)
+      .set('Authorization', `Bearer ${orgToken}`)
+      .send({ channel: 'fax', message_template: 'test' });
+    expect(res.status).toBe(400);
+  });
+
+  it('deletes a channel message', async () => {
+    const res = await request(app)
+      .delete(`/api/codes/${codeId}/messages/email`)
+      .set('Authorization', `Bearer ${orgToken}`);
+    expect(res.status).toBe(200);
+  });
+
+  it('scan info endpoint returns title and description', async () => {
+    const codes = await request(app).get('/api/codes').set('Authorization', `Bearer ${orgToken}`);
+    const c = codes.body.find(x => x.id === codeId);
+    const res = await request(app).get(`/api/scan/${c.scan_token}/info`);
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBeDefined();
+  });
+});

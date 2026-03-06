@@ -2,8 +2,9 @@
 
 /**
  * Notification dispatcher.
- * Given a membership and a payload, dispatches to all enabled channels.
- * Channels: push | email | sms | whatsapp | telegram | slack
+ * Channels: push | email | sms | whatsapp | telegram | slack | teams
+ * Per-channel message templates stored in token_channel_messages.
+ * Template syntax: use {FIELDLABEL} to interpolate form responses, e.g. "{name} wants to contact you."
  */
 
 const db = require('../db');
@@ -12,14 +13,57 @@ const { sendNotificationEmail } = require('./email');
 const { v4: uuidv4 } = require('uuid');
 
 /**
- * Dispatch a notification to one membership, respecting paused/vacation state.
- * If the membership is on vacation, queues the notification for later delivery.
- *
- * @param {object} membership   Row from token_memberships (with end_user joined)
- * @param {object} payload      { title, body, url }
- * @param {object} code         Row from codes
+ * Resolve the notification message for a channel, using:
+ * 1. token_channel_messages override for that channel
+ * 2. code.notification_message default
+ * 3. Built-in fallback
+ * Interpolates {fieldLabel} tokens with responses values.
  */
-async function dispatchToMembership(membership, payload, code) {
+function resolveMessage(code, channel, responses) {
+  const override = db.prepare('SELECT message_template FROM token_channel_messages WHERE token_id = ? AND channel = ?')
+    .get(code.id, channel);
+  const general = db.prepare('SELECT message_template FROM token_channel_messages WHERE token_id = ? AND channel = ?')
+    .get(code.id, 'general');
+
+  let template = override?.message_template
+    || general?.message_template
+    || code.notification_message
+    || null;
+
+  if (!template) {
+    if (responses && Object.keys(responses).length > 0) {
+      const parts = Object.values(responses).filter(Boolean).join(', ');
+      return parts ? `${parts} wanted to notify you.` : `You have a notification from ${code.mailbox_label || code.name}.`;
+    }
+    return `${code.mailbox_label || 'Your mailbox'} has mail waiting for you. Please collect it.`;
+  }
+
+  // Interpolate {key} placeholders from responses
+  if (responses) {
+    for (const [key, value] of Object.entries(responses)) {
+      // responses keyed by fieldId — try to find label for user-friendly substitution
+      const field = db.prepare('SELECT label FROM token_input_fields WHERE id = ?').get(key);
+      const placeholder = field ? field.label.toUpperCase() : key.toUpperCase();
+      template = template.replace(new RegExp(`\\{${placeholder}\\}`, 'gi'), value || '');
+      // Also allow raw key substitution
+      template = template.replace(new RegExp(`\\{${key}\\}`, 'gi'), value || '');
+    }
+  }
+
+  return template;
+}
+
+function buildPayload(code, channel, responses) {
+  const title = code.title || `Notification from ${code.mailbox_label || code.name}`;
+  const body = resolveMessage(code, channel, responses);
+  const url = process.env.USER_PWA_URL || 'http://localhost:5174';
+  return { title, body, url };
+}
+
+/**
+ * Dispatch a notification to one membership, respecting paused/vacation state.
+ */
+async function dispatchToMembership(membership, _legacyPayload, code, responses) {
   if (membership.status !== 'accepted') return;
   if (membership.paused) return;
 
@@ -28,24 +72,23 @@ async function dispatchToMembership(membership, payload, code) {
     db.prepare(`
       INSERT INTO notification_queue (id, membership_id, payload_json, scheduled_for)
       VALUES (?, ?, ?, ?)
-    `).run(uuidv4(), membership.id, JSON.stringify({ payload, codeId: code.id }), membership.vacation_until);
+    `).run(uuidv4(), membership.id, JSON.stringify({ responses, codeId: code.id }), membership.vacation_until);
     return;
   }
 
   const endUser = db.prepare('SELECT * FROM end_users WHERE id = ?').get(membership.end_user_id);
   if (!endUser) return;
 
-  // Get enabled channels for this membership (default to push + email if no prefs set)
   const prefs = db.prepare('SELECT channel, enabled FROM member_channel_prefs WHERE membership_id = ?')
     .all(membership.id);
-
   const enabledChannels = prefs.length > 0
     ? prefs.filter(p => p.enabled).map(p => p.channel)
-    : ['push', 'email']; // default channels before user configures prefs
+    : ['push', 'email'];
 
   const results = [];
 
   for (const channel of enabledChannels) {
+    const payload = buildPayload(code, channel, responses);
     const notifId = uuidv4();
     let status = 'sent';
     try {
@@ -71,11 +114,7 @@ async function dispatchChannel(channel, endUser, payload, _code) {
       break;
     }
     case 'email': {
-      await sendNotificationEmail({
-        toEmail: endUser.email,
-        subject: payload.title,
-        body: payload.body,
-      });
+      await sendNotificationEmail({ toEmail: endUser.email, subject: payload.title, body: payload.body });
       break;
     }
     case 'sms': {
@@ -102,6 +141,12 @@ async function dispatchChannel(channel, endUser, payload, _code) {
       await sendSlack(ch.value, payload.body);
       break;
     }
+    case 'teams': {
+      const ch = db.prepare("SELECT value FROM end_user_channels WHERE end_user_id = ? AND channel = 'teams' AND verified = 1").get(endUser.id);
+      if (!ch) throw new Error('no_teams');
+      await sendTeams(ch.value, payload.title, payload.body);
+      break;
+    }
     default:
       throw new Error(`unknown channel: ${channel}`);
   }
@@ -111,70 +156,79 @@ async function dispatchChannel(channel, endUser, payload, _code) {
 
 async function sendSms(to, body) {
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    console.log(`[sms stub] To: ${to} | Body: ${body}`);
-    return;
+    console.log(`[sms stub] To: ${to} | Body: ${body}`); return;
   }
-  const twilio = require('twilio');
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
   await client.messages.create({ body, from: process.env.TWILIO_PHONE_FROM, to });
 }
 
 async function sendWhatsApp(to, body) {
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    console.log(`[whatsapp stub] To: ${to} | Body: ${body}`);
-    return;
+    console.log(`[whatsapp stub] To: ${to} | Body: ${body}`); return;
   }
-  const twilio = require('twilio');
-  const client = twilio(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
+  const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
   await client.messages.create({ body, from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`, to: `whatsapp:${to}` });
 }
 
 async function sendTelegram(chatId, text) {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.log(`[telegram stub] Chat: ${chatId} | Text: ${text}`);
-    return;
+    console.log(`[telegram stub] Chat: ${chatId} | Text: ${text}`); return;
   }
   const res = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ chat_id: chatId, text }),
   });
   if (!res.ok) throw new Error(`Telegram API error: ${res.status}`);
 }
 
 async function sendSlack(webhookUrl, text) {
-  if (!webhookUrl) {
-    console.log(`[slack stub] Text: ${text}`);
-    return;
-  }
+  if (!webhookUrl) { console.log(`[slack stub] Text: ${text}`); return; }
   const res = await fetch(webhookUrl, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ text }),
   });
   if (!res.ok) throw new Error(`Slack webhook error: ${res.status}`);
 }
 
+/** Microsoft Teams via Incoming Webhook — sends an Adaptive Card style message */
+async function sendTeams(webhookUrl, title, text) {
+  if (!webhookUrl) { console.log(`[teams stub] Title: ${title} | Text: ${text}`); return; }
+  const body = {
+    type: 'message',
+    attachments: [{
+      contentType: 'application/vnd.microsoft.card.adaptive',
+      content: {
+        type: 'AdaptiveCard',
+        version: '1.4',
+        body: [
+          { type: 'TextBlock', size: 'Medium', weight: 'Bolder', text: title },
+          { type: 'TextBlock', wrap: true, text },
+        ],
+      },
+    }],
+  };
+  const res = await fetch(webhookUrl, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(`Teams webhook error: ${res.status}`);
+}
+
 // ── Background queue worker ──────────────────────────────────────────────────
 
-/**
- * Called on an interval. Dispatches any queued notifications whose scheduled_for has passed.
- */
 async function flushNotificationQueue() {
   const due = db.prepare(`
     SELECT nq.*, tm.end_user_id, tm.status AS membership_status,
            tm.paused, tm.vacation_until, tm.id AS membership_id
     FROM notification_queue nq
     JOIN token_memberships tm ON tm.id = nq.membership_id
-    WHERE nq.dispatched_at IS NULL
-      AND nq.scheduled_for <= datetime('now')
+    WHERE nq.dispatched_at IS NULL AND nq.scheduled_for <= datetime('now')
   `).all();
 
   for (const row of due) {
-    const { payload, codeId } = JSON.parse(row.payload_json);
+    const { responses, codeId } = JSON.parse(row.payload_json);
     const code = db.prepare('SELECT * FROM codes WHERE id = ?').get(codeId);
     if (!code) continue;
-
     const endUser = db.prepare('SELECT * FROM end_users WHERE id = ?').get(row.end_user_id);
     if (!endUser) continue;
 
@@ -182,13 +236,13 @@ async function flushNotificationQueue() {
     const enabledChannels = prefs.length > 0 ? prefs.filter(p => p.enabled).map(p => p.channel) : ['push', 'email'];
 
     for (const channel of enabledChannels) {
+      const payload = buildPayload(code, channel, responses);
       const notifId = uuidv4();
       let status = 'sent';
       try { await dispatchChannel(channel, endUser, payload, code); } catch { status = 'failed'; }
-      db.prepare(`INSERT INTO notifications (id, code_id, end_user_id, method, status, payload_json) VALUES (?,?,?,?,?,?)`)
+      db.prepare('INSERT INTO notifications (id, code_id, end_user_id, method, status, payload_json) VALUES (?,?,?,?,?,?)')
         .run(notifId, code.id, endUser.id, channel, status, JSON.stringify(payload));
     }
-
     db.prepare("UPDATE notification_queue SET dispatched_at = datetime('now') WHERE id = ?").run(row.id);
   }
 }

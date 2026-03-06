@@ -5,7 +5,8 @@
   "workspaces": [
     "backend",
     "admin-frontend",
-    "user-pwa"
+    "user-pwa",
+    "notifier"
   ],
   "scripts": {
     "dev:backend": "npm --workspace=backend run dev",
@@ -13,7 +14,9 @@
     "dev:pwa": "npm --workspace=user-pwa run dev",
     "build:admin": "npm --workspace=admin-frontend run build",
     "build:pwa": "npm --workspace=user-pwa run build",
-    "build": "npm run build:admin && npm run build:pwa",
-    "test": "npm --workspace=backend run test"
+    "build": "npm run build:admin && npm run build:pwa && npm run build:notifier",
+    "test": "npm --workspace=backend run test",
+    "dev:notifier": "npm --workspace=notifier run dev",
+    "build:notifier": "npm --workspace=notifier run build"
   }
 }

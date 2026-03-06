@@ -47,6 +47,9 @@ db.exec(`
     contact_email   TEXT,
     contact_phone   TEXT,
     qr_data_url     TEXT,
+    title           TEXT,
+    description     TEXT,
+    notification_message TEXT,
     scan_token      TEXT UNIQUE NOT NULL,
     created_at      TEXT NOT NULL DEFAULT (datetime('now'))
   );
@@ -99,7 +102,7 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS member_channel_prefs (
     id            TEXT PRIMARY KEY,
     membership_id TEXT NOT NULL REFERENCES token_memberships(id) ON DELETE CASCADE,
-    channel       TEXT NOT NULL CHECK(channel IN ('push','email','sms','whatsapp','telegram','slack')),
+    channel       TEXT NOT NULL CHECK(channel IN ('push','email','sms','whatsapp','telegram','slack','teams')),
     enabled       INTEGER NOT NULL DEFAULT 1,
     UNIQUE(membership_id, channel)
   );
@@ -108,13 +111,22 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS end_user_channels (
     id          TEXT PRIMARY KEY,
     end_user_id TEXT NOT NULL REFERENCES end_users(id) ON DELETE CASCADE,
-    channel     TEXT NOT NULL CHECK(channel IN ('sms','whatsapp','telegram','slack')),
+    channel     TEXT NOT NULL CHECK(channel IN ('sms','whatsapp','telegram','slack','teams')),
     value       TEXT NOT NULL,
     verified    INTEGER NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL DEFAULT (datetime('now')),
     UNIQUE(end_user_id, channel)
   );
 
+
+  -- Per-channel message templates for a token (overrides default notification_message)
+  CREATE TABLE IF NOT EXISTS token_channel_messages (
+    id           TEXT PRIMARY KEY,
+    token_id     TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
+    channel      TEXT NOT NULL,
+    message_template TEXT NOT NULL,
+    UNIQUE(token_id, channel)
+  );
   -- Delayed/queued notifications (for vacation mode)
   CREATE TABLE IF NOT EXISTS notification_queue (
     id             TEXT PRIMARY KEY,
