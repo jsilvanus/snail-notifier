@@ -1,6 +1,4 @@
-'use strict';
-
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 
 /**
@@ -22,4 +20,4 @@ function authMiddleware(req, res, next) {
   }
 }
 
-module.exports = authMiddleware;
+export default authMiddleware;

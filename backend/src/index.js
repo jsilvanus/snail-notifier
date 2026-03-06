@@ -1,16 +1,17 @@
-'use strict';
+import 'dotenv/config';
+import { fileURLToPath } from 'url';
 
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-
-const authRouter = require('./routes/auth');
-const usersRouter = require('./routes/users');
-const codesRouter = require('./routes/codes');
-const scanRouter = require('./routes/scan');
-const notificationsRouter = require('./routes/notifications');
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
+import codesRouter from './routes/codes.js';
+import scanRouter from './routes/scan.js';
+import notificationsRouter from './routes/notifications.js';
+import layoutsRouter from './routes/layouts.js';
+import { flushNotificationQueue } from './dispatcher.js';
 
 const app = express();
 
@@ -55,6 +56,7 @@ app.use('/api/scan', scanLimiter, scanRouter);
 app.use('/api/users', apiLimiter, usersRouter);
 app.use('/api/codes', apiLimiter, codesRouter);
 app.use('/api/notifications', apiLimiter, notificationsRouter);
+app.use('/api/layouts', apiLimiter, layoutsRouter);
 
 // 404
 app.use((_req, res) => res.status(404).json({ error: 'Not found' }));
@@ -67,8 +69,15 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-if (require.main === module) {
+
+// Only start the server and background jobs when run directly (not imported by tests).
+// The flushNotificationQueue interval is intentionally guarded here so it does
+// not leak into test runs.
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => console.log(`Snail-Notifier backend listening on port ${PORT}`));
+
+  const FLUSH_INTERVAL_MS = 30_000; // 30 seconds
+  setInterval(flushNotificationQueue, FLUSH_INTERVAL_MS);
 }
 
-module.exports = app;
+export default app;
