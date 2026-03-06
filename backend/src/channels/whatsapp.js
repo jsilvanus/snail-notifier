@@ -9,11 +9,12 @@
 
 /**
  * Send a WhatsApp text message.
- * @param {string} to      – Recipient phone number (E.164 without '+')
- * @param {string} message – Plain-text message body
+ * @param {string} to       – Recipient phone number (E.164 without '+')
+ * @param {string} message  – Plain-text message body
+ * @param {string} [_title] – Ignored for WhatsApp; accepted for a uniform adapter signature
  * @returns {Promise<object>} – API response
  */
-export async function send(to, message) {
+export async function send(to, message, _title) {
   const { WHATSAPP_API_URL, WHATSAPP_API_TOKEN } = process.env;
   if (!WHATSAPP_API_URL || !WHATSAPP_API_TOKEN) {
     throw new Error('WHATSAPP_API_URL and WHATSAPP_API_TOKEN must be set');

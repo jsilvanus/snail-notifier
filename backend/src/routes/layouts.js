@@ -82,6 +82,8 @@ router.delete('/:id', (req, res) => {
 // ── Resolve share_code → layout record ───────────────────────────────────
 // Used by the notifier API client to get the integer layout_id before
 // inserting a notification_queue row, so the FK constraint is satisfied.
+// The request body uses `target_share_code` to match the field name that the
+// notifier client sends when referencing a layout by its human-readable code.
 router.post('/resolve', (req, res) => {
   if (req.user.type !== 'org_user') return res.status(403).json({ error: 'Forbidden' });
 

@@ -10,13 +10,13 @@
  * Uses JSON.stringify on a proper object to avoid malformed JSON if message
  * contains special characters such as quotes.
  *
- * @param {string} webhookUrl – Override per-notification; falls back to env var
- * @param {string} message    – Plain-text notification body
- * @param {string} [title]    – Optional card title
+ * @param {string} target  – Webhook URL; falls back to TEAMS_WEBHOOK_URL env var
+ * @param {string} message – Plain-text notification body
+ * @param {string} [title] – Optional card title
  * @returns {Promise<void>}
  */
-export async function send(webhookUrl, message, title = 'Snail Notifier') {
-  const url = webhookUrl || process.env.TEAMS_WEBHOOK_URL;
+export async function send(target, message, title = 'Snail Notifier') {
+  const url = target || process.env.TEAMS_WEBHOOK_URL;
   if (!url) {
     throw new Error('TEAMS_WEBHOOK_URL must be set or passed as the first argument');
   }

@@ -9,11 +9,12 @@
 
 /**
  * Send an SMS notification.
- * @param {string} to      – Recipient phone number (E.164 format)
- * @param {string} message – Plain-text message body
+ * @param {string} to       – Recipient phone number (E.164 format)
+ * @param {string} message  – Plain-text message body
+ * @param {string} [_title] – Ignored for SMS; accepted for a uniform adapter signature
  * @returns {Promise<object>} – Provider response
  */
-export async function send(to, message) {
+export async function send(to, message, _title) {
   const { SMS_PROVIDER_URL, SMS_API_KEY, SMS_FROM } = process.env;
   if (!SMS_PROVIDER_URL || !SMS_API_KEY) {
     throw new Error('SMS_PROVIDER_URL and SMS_API_KEY must be set');

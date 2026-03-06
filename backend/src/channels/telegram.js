@@ -9,11 +9,12 @@ const TELEGRAM_API_BASE = 'https://api.telegram.org';
 
 /**
  * Send a Telegram message.
- * @param {string|number} chatId – Recipient chat ID
+ * @param {string|number} chatId  – Recipient chat ID
  * @param {string}        message – Message text (supports Markdown)
+ * @param {string}        [_title] – Ignored for Telegram; accepted for a uniform adapter signature
  * @returns {Promise<object>} – Telegram API response
  */
-export async function send(chatId, message) {
+export async function send(chatId, message, _title) {
   const { TELEGRAM_BOT_TOKEN } = process.env;
   if (!TELEGRAM_BOT_TOKEN) {
     throw new Error('TELEGRAM_BOT_TOKEN must be set');
