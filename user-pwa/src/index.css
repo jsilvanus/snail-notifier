@@ -1,0 +1,63 @@
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --bg: #f0f9ff;
+  --surface: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #bfdbfe;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --radius: 12px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { min-height: 100vh; }
+
+input { border: 1px solid var(--border); border-radius: var(--radius); padding: .6rem .9rem; font-size: 1rem; width: 100%; outline: none; }
+input:focus { border-color: var(--primary); }
+
+button { cursor: pointer; border: none; border-radius: var(--radius); padding: .65rem 1.5rem; font-size: 1rem; font-weight: 600; }
+.btn-primary { background: var(--primary); color: #fff; }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-ghost { background: transparent; color: var(--primary); border: 2px solid var(--primary); }
+
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 1.25rem; box-shadow: 0 2px 8px rgba(37,99,235,.08); }
+
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size: .875rem; font-weight: 600; margin-bottom: .3rem; }
+
+.error { color: var(--danger); font-size: .875rem; margin-top: .25rem; }
+
+header {
+  background: var(--primary);
+  color: #fff;
+  padding: 1rem 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+header .brand { font-weight: 700; font-size: 1.1rem; }
+header button { background: rgba(255,255,255,.15); color: #fff; padding: .35rem .9rem; font-size: .875rem; }
+
+.page { max-width: 600px; margin: 0 auto; padding: 1rem; }
+
+.notif-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1rem;
+  margin-bottom: .75rem;
+  display: flex;
+  gap: 1rem;
+  align-items: flex-start;
+}
+.notif-icon { font-size: 1.75rem; flex-shrink: 0; }
+.notif-body strong { display: block; }
+.notif-body small { color: var(--muted); font-size: .8rem; }
+
+.tag { display: inline-block; padding: .2rem .55rem; border-radius: 99px; font-size: .75rem; font-weight: 600; background: #dbeafe; color: #1d4ed8; margin-left: .4rem; }

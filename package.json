@@ -1,0 +1,19 @@
+{
+  "name": "snail-notifier",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "admin-frontend",
+    "user-pwa"
+  ],
+  "scripts": {
+    "dev:backend": "npm --workspace=backend run dev",
+    "dev:admin": "npm --workspace=admin-frontend run dev",
+    "dev:pwa": "npm --workspace=user-pwa run dev",
+    "build:admin": "npm --workspace=admin-frontend run build",
+    "build:pwa": "npm --workspace=user-pwa run build",
+    "build": "npm run build:admin && npm run build:pwa",
+    "test": "npm --workspace=backend run test"
+  }
+}

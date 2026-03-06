@@ -1,0 +1,97 @@
+:root {
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --bg: #f8fafc;
+  --surface: #ffffff;
+  --text: #1e293b;
+  --muted: #64748b;
+  --border: #e2e8f0;
+  --danger: #dc2626;
+  --success: #16a34a;
+  --radius: 8px;
+  font-family: system-ui, -apple-system, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body { min-height: 100vh; }
+
+a { color: var(--primary); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+input, select, textarea {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.75rem;
+  font-size: 1rem;
+  width: 100%;
+  outline: none;
+  transition: border-color .15s;
+}
+input:focus, select:focus { border-color: var(--primary); }
+
+button {
+  cursor: pointer;
+  border: none;
+  border-radius: var(--radius);
+  padding: 0.5rem 1.25rem;
+  font-size: 1rem;
+  font-weight: 500;
+  transition: background .15s;
+}
+.btn-primary {
+  background: var(--primary);
+  color: #fff;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-danger { background: var(--danger); color: #fff; }
+.btn-danger:hover { opacity: .85; }
+.btn-ghost {
+  background: transparent;
+  color: var(--primary);
+  border: 1px solid var(--primary);
+}
+.btn-ghost:hover { background: var(--primary); color: #fff; }
+
+.card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.5rem;
+  box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+
+.form-group { margin-bottom: 1rem; }
+.form-group label { display: block; font-size:.875rem; font-weight:500; margin-bottom:.25rem; }
+
+.error { color: var(--danger); font-size:.875rem; margin-top:.25rem; }
+
+nav {
+  background: var(--primary);
+  color: #fff;
+  padding: .75rem 1.5rem;
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+nav .brand { font-weight: 700; font-size: 1.1rem; margin-right: auto; }
+nav a { color: rgba(255,255,255,.85); font-weight:500; }
+nav a:hover { color: #fff; text-decoration:none; }
+
+.page { max-width: 900px; margin: 2rem auto; padding: 0 1rem; }
+
+table { width:100%; border-collapse:collapse; }
+th, td { padding:.75rem 1rem; text-align:left; border-bottom:1px solid var(--border); font-size:.9rem; }
+th { font-weight:600; background: var(--bg); }
+
+.badge {
+  display:inline-block; padding:.2rem .6rem;
+  border-radius:99px; font-size:.75rem; font-weight:600;
+}
+.badge-qr { background:#dbeafe; color:#1d4ed8; }
+.badge-nfc { background:#f0fdf4; color:#15803d; }
+
+.tag-sent { color: var(--success); }
+.tag-failed { color: var(--danger); }
