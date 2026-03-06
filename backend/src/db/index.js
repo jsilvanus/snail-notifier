@@ -42,6 +42,7 @@ db.exec(`
     org_id          TEXT NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
     name            TEXT NOT NULL,
     type            TEXT NOT NULL CHECK(type IN ('QR','NFC')),
+    behavior        TEXT NOT NULL DEFAULT 'simple' CHECK(behavior IN ('simple','data_input')),
     mailbox_label   TEXT,
     contact_email   TEXT,
     contact_phone   TEXT,
@@ -64,7 +65,64 @@ db.exec(`
     end_user_id TEXT REFERENCES end_users(id) ON DELETE SET NULL,
     method      TEXT NOT NULL DEFAULT 'push',
     status      TEXT NOT NULL DEFAULT 'sent',
+    payload_json TEXT,
     sent_at     TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  -- Many-to-many join: which end_users are members of which tokens, with consent status
+  CREATE TABLE IF NOT EXISTS token_memberships (
+    id            TEXT PRIMARY KEY,
+    token_id      TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
+    end_user_id   TEXT NOT NULL REFERENCES end_users(id) ON DELETE CASCADE,
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending','accepted','declined')),
+    paused        INTEGER NOT NULL DEFAULT 0,
+    vacation_until TEXT,
+    invited_at    TEXT NOT NULL DEFAULT (datetime('now')),
+    responded_at  TEXT,
+    consent_token TEXT UNIQUE NOT NULL,
+    UNIQUE(token_id, end_user_id)
+  );
+
+  -- Input fields for data_input tokens
+  CREATE TABLE IF NOT EXISTS token_input_fields (
+    id           TEXT PRIMARY KEY,
+    token_id     TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
+    label        TEXT NOT NULL,
+    placeholder  TEXT,
+    field_type   TEXT NOT NULL DEFAULT 'text' CHECK(field_type IN ('text','number','select')),
+    options_json TEXT,
+    required     INTEGER NOT NULL DEFAULT 1,
+    sort_order   INTEGER NOT NULL DEFAULT 0
+  );
+
+  -- Per-membership channel preferences (which channels are enabled for a user on a token)
+  CREATE TABLE IF NOT EXISTS member_channel_prefs (
+    id            TEXT PRIMARY KEY,
+    membership_id TEXT NOT NULL REFERENCES token_memberships(id) ON DELETE CASCADE,
+    channel       TEXT NOT NULL CHECK(channel IN ('push','email','sms','whatsapp','telegram','slack')),
+    enabled       INTEGER NOT NULL DEFAULT 1,
+    UNIQUE(membership_id, channel)
+  );
+
+  -- Per-user channel contact info (e.g. phone number for SMS, telegram chat_id)
+  CREATE TABLE IF NOT EXISTS end_user_channels (
+    id          TEXT PRIMARY KEY,
+    end_user_id TEXT NOT NULL REFERENCES end_users(id) ON DELETE CASCADE,
+    channel     TEXT NOT NULL CHECK(channel IN ('sms','whatsapp','telegram','slack')),
+    value       TEXT NOT NULL,
+    verified    INTEGER NOT NULL DEFAULT 0,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    UNIQUE(end_user_id, channel)
+  );
+
+  -- Delayed/queued notifications (for vacation mode)
+  CREATE TABLE IF NOT EXISTS notification_queue (
+    id             TEXT PRIMARY KEY,
+    membership_id  TEXT NOT NULL REFERENCES token_memberships(id) ON DELETE CASCADE,
+    payload_json   TEXT NOT NULL,
+    scheduled_for  TEXT NOT NULL,
+    dispatched_at  TEXT,
+    created_at     TEXT NOT NULL DEFAULT (datetime('now'))
   );
 `);
 

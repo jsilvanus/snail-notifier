@@ -6,7 +6,7 @@ import { useAuth } from '../hooks/useAuth';
 export default function CreateCode() {
   const { token } = useAuth();
   const navigate = useNavigate();
-  const [form, setForm] = useState({ name: '', type: 'QR', mailbox_label: '', contact_email: '', contact_phone: '' });
+  const [form, setForm] = useState({ name: '', type: 'QR', behavior: 'simple', mailbox_label: '', contact_email: '', contact_phone: '' });
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [created, setCreated] = useState(null);
@@ -31,11 +31,11 @@ export default function CreateCode() {
     return (
       <div className="page">
         <div className="card" style={{ maxWidth: 500 }}>
-          <h2 style={{ marginBottom: '1rem' }}>✅ Code Created</h2>
+          <h2 style={{ marginBottom: '1rem' }}>Code Created</h2>
           <p><strong>Name:</strong> {created.name}</p>
           <p><strong>Type:</strong> {created.type}</p>
+          <p><strong>Behavior:</strong> {created.behavior === 'data_input' ? 'Data Input' : 'Simple'}</p>
           {created.mailbox_label && <p><strong>Mailbox:</strong> {created.mailbox_label}</p>}
-          {created.contact_email && <p><strong>Contact:</strong> {created.contact_email}</p>}
           <p style={{ marginTop: '.75rem' }}>
             <strong>Scan URL:</strong>{' '}
             <code style={{ fontSize: '.8rem', wordBreak: 'break-all' }}>{created.scan_url}</code>
@@ -46,7 +46,7 @@ export default function CreateCode() {
               <img src={created.qr_data_url} alt="QR code" style={{ width: 200, height: 200, border: '1px solid var(--border)', borderRadius: 'var(--radius)' }} />
               <div style={{ marginTop: '.5rem' }}>
                 <a href={created.qr_data_url} download={`${created.name}-qr.png`}>
-                  <button className="btn-ghost" style={{ fontSize: '.875rem' }}>⬇ Download QR PNG</button>
+                  <button className="btn-ghost" style={{ fontSize: '.875rem' }}>Download QR PNG</button>
                 </a>
               </div>
             </div>
@@ -58,8 +58,10 @@ export default function CreateCode() {
             </div>
           )}
           <div style={{ display: 'flex', gap: '.5rem', marginTop: '1rem' }}>
-            <button className="btn-primary" onClick={() => setCreated(null)}>Create Another</button>
-            <button className="btn-ghost" onClick={() => navigate('/codes')}>View All Codes</button>
+            <button className="btn-primary" onClick={() => navigate(`/codes/${created.id}`)}>
+              {created.behavior === 'data_input' ? 'Add Input Fields' : 'Invite Members'}
+            </button>
+            <button className="btn-ghost" onClick={() => setCreated(null)}>Create Another</button>
           </div>
         </div>
       </div>
@@ -83,11 +85,23 @@ export default function CreateCode() {
             </select>
           </div>
           <div className="form-group">
+            <label>Behavior *</label>
+            <select value={form.behavior} onChange={set('behavior')}>
+              <option value="simple">Simple — notify on scan</option>
+              <option value="data_input">Data Input — ask scanner for info, then notify</option>
+            </select>
+            {form.behavior === 'data_input' && (
+              <p style={{ fontSize: '.8rem', color: 'var(--muted)', marginTop: '.4rem' }}>
+                You can add input fields (e.g. "Your name") after creating this code. The scanner's answers will be included in the notification.
+              </p>
+            )}
+          </div>
+          <div className="form-group">
             <label>Mailbox label</label>
             <input value={form.mailbox_label} onChange={set('mailbox_label')} placeholder="e.g. Box 42, Building A" />
           </div>
           <div className="form-group">
-            <label>Contact email (mailbox owner)</label>
+            <label>Contact email (legacy — prefer inviting members after creation)</label>
             <input type="email" value={form.contact_email} onChange={set('contact_email')} placeholder="owner@example.com" />
           </div>
           <div className="form-group">

@@ -16,4 +16,15 @@ export const api = {
   subscribe: (subscription, token) => request('/notifications/subscribe', { method: 'POST', body: JSON.stringify({ subscription }) }, token),
   unsubscribe: (token) => request('/notifications/subscribe', { method: 'DELETE' }, token),
   getNotifications: (token) => request('/notifications', {}, token),
+
+  // Memberships
+  getMemberships: (token) => request('/memberships', {}, token),
+  updateMembership: (id, body, token) => request(`/memberships/${id}`, { method: 'PATCH', body: JSON.stringify(body) }, token),
+  deleteMembership: (id, token) => request(`/memberships/${id}`, { method: 'DELETE' }, token),
+  getMembershipChannels: (id, token) => request(`/memberships/${id}/channels`, {}, token),
+  setMembershipChannels: (id, channels, token) => request(`/memberships/${id}/channels`, { method: 'PUT', body: JSON.stringify({ channels }) }, token),
+
+  // User channel contact info
+  getUserChannels: (token) => request('/users/me/channels', {}, token),
+  setUserChannel: (channel, value, token) => request('/users/me/channels', { method: 'PUT', body: JSON.stringify({ channel, value }) }, token),
 };
