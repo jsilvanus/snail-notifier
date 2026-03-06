@@ -1,8 +1,9 @@
-'use strict';
+import Database from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/snail.db');
 
@@ -66,6 +67,26 @@ db.exec(`
     status      TEXT NOT NULL DEFAULT 'sent',
     sent_at     TEXT NOT NULL DEFAULT (datetime('now'))
   );
+
+  CREATE TABLE IF NOT EXISTS notification_layouts (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    share_code  TEXT UNIQUE NOT NULL,
+    name        TEXT NOT NULL,
+    template    TEXT NOT NULL,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now'))
+  );
+
+  CREATE TABLE IF NOT EXISTS notification_queue (
+    id          TEXT PRIMARY KEY,
+    code_id     TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
+    channel     TEXT NOT NULL,
+    target      TEXT NOT NULL,
+    layout_id   INTEGER REFERENCES notification_layouts(id) ON DELETE SET NULL,
+    status      TEXT NOT NULL DEFAULT 'pending',
+    payload     TEXT,
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    sent_at     TEXT
+  );
 `);
 
-module.exports = db;
+export default db;

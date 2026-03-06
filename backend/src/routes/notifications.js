@@ -1,17 +1,17 @@
-'use strict';
-
 /**
  * Notification / push-subscription routes.
- * POST /api/notifications/subscribe    – End-user saves their push subscription
- * DELETE /api/notifications/subscribe  – End-user removes their push subscription
- * GET  /api/notifications              – End-user polls for their recent notifications
- * GET  /api/notifications/vapid-key    – Return VAPID public key (no auth)
+ * POST   /api/notifications/subscribe    – End-user saves their push subscription
+ * DELETE /api/notifications/subscribe    – End-user removes their push subscription
+ * GET    /api/notifications              – End-user polls for their recent notifications
+ * GET    /api/notifications/vapid-key    – Return VAPID public key (no auth)
  */
 
-const router = require('express').Router();
-const webpush = require('web-push');
-const db = require('../db');
-const auth = require('../middleware/auth');
+import { Router } from 'express';
+import webpush from 'web-push';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
+
+const router = Router();
 
 // Configure VAPID if keys are provided
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -27,7 +27,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
  * @param {object} subscription  – PushSubscription JSON
  * @param {object} payload       – { title, body, url }
  */
-async function sendPushNotification(subscription, payload) {
+export async function sendPushNotification(subscription, payload) {
   return webpush.sendNotification(subscription, JSON.stringify(payload));
 }
 
@@ -71,5 +71,4 @@ router.get('/', auth, (req, res) => {
   return res.json(rows);
 });
 
-module.exports = router;
-module.exports.sendPushNotification = sendPushNotification;
+export default router;

@@ -1,18 +1,18 @@
-'use strict';
-
 /**
  * Code management routes (QR / NFC codes per organisation).
- * GET    /api/codes             – List org codes
- * POST   /api/codes             – Create a new code (generates QR image)
- * DELETE /api/codes/:id         – Delete a code
- * GET    /api/codes/:id/qr      – Return QR PNG image
+ * GET    /api/codes          – List org codes
+ * POST   /api/codes          – Create a new code (generates QR image)
+ * DELETE /api/codes/:id      – Delete a code
+ * GET    /api/codes/:id/qr   – Return QR PNG image
  */
 
-const router = require('express').Router();
-const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
-const auth = require('../middleware/auth');
+import { Router } from 'express';
+import QRCode from 'qrcode';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
+
+const router = Router();
 
 // ── Authenticated org-user routes ─────────────────────────────────────────
 
@@ -67,4 +67,4 @@ router.get('/:id/qr', auth, (req, res) => {
   return res.send(imgBuffer);
 });
 
-module.exports = router;
+export default router;

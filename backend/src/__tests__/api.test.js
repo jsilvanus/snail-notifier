@@ -1,10 +1,10 @@
-'use strict';
+import { jest } from '@jest/globals';
 
 process.env.DATABASE_PATH = ':memory:';
 process.env.JWT_SECRET = 'test_secret';
 
-const request = require('supertest');
-const app = require('../index');
+const { default: request } = await import('supertest');
+const { default: app } = await import('../index.js');
 
 describe('Health', () => {
   it('GET /api/health returns ok', async () => {
@@ -155,5 +155,69 @@ describe('VAPID key endpoint', () => {
     const res = await request(app).get('/api/notifications/vapid-key');
     expect(res.status).toBe(200);
     expect(res.body).toHaveProperty('publicKey');
+  });
+});
+
+describe('Layouts', () => {
+  let token;
+
+  beforeAll(async () => {
+    const res = await request(app).post('/api/auth/org/register').send({
+      orgName: 'Layout Org', name: 'Admin', email: 'layout@test.org', password: 'layoutpass',
+    });
+    token = res.body.token;
+  });
+
+  it('creates a layout', async () => {
+    const res = await request(app)
+      .post('/api/layouts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ share_code: 'mail-arrived', name: 'Mail Arrived', template: 'Your mail has arrived at {{mailbox}}' });
+    expect(res.status).toBe(201);
+    expect(res.body.id).toBeDefined();
+    expect(res.body.share_code).toBe('mail-arrived');
+  });
+
+  it('rejects duplicate share_code', async () => {
+    await request(app)
+      .post('/api/layouts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ share_code: 'dup-code', name: 'First', template: 'Template 1' });
+    const res = await request(app)
+      .post('/api/layouts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ share_code: 'dup-code', name: 'Second', template: 'Template 2' });
+    expect(res.status).toBe(409);
+  });
+
+  it('lists layouts', async () => {
+    const res = await request(app)
+      .get('/api/layouts')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('resolves share_code to layout_id', async () => {
+    await request(app)
+      .post('/api/layouts')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ share_code: 'resolve-me', name: 'Resolvable', template: 'Hello' });
+
+    const res = await request(app)
+      .post('/api/layouts/resolve')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ target_share_code: 'resolve-me' });
+    expect(res.status).toBe(200);
+    expect(res.body.layout_id).toBeDefined();
+    expect(res.body.share_code).toBe('resolve-me');
+  });
+
+  it('returns 404 for unknown share_code in resolve', async () => {
+    const res = await request(app)
+      .post('/api/layouts/resolve')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ target_share_code: 'does-not-exist' });
+    expect(res.status).toBe(404);
   });
 });

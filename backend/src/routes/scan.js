@@ -1,14 +1,14 @@
-'use strict';
-
 /**
  * Public scan endpoint used when a mail carrier scans a QR / NFC code.
  * GET /api/scan/:token  – no authentication required
  */
 
-const router = require('express').Router();
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
-const { sendPushNotification } = require('./notifications');
+import { Router } from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import { sendPushNotification } from './notifications.js';
+
+const router = Router();
 
 router.get('/:token', async (req, res) => {
   const code = db.prepare('SELECT * FROM codes WHERE scan_token = ?').get(req.params.token);
@@ -48,4 +48,4 @@ router.get('/:token', async (req, res) => {
   });
 });
 
-module.exports = router;
+export default router;
