@@ -33,6 +33,20 @@ function getTransporter() {
 }
 
 /**
+ * Escape a string for safe interpolation into HTML.
+ * @param {string} str
+ * @returns {string}
+ */
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+/**
  * Send a plain-text + HTML email.
  * @param {object} opts
  * @param {string} opts.to
@@ -70,9 +84,13 @@ async function sendConsentEmail({ toEmail, orgName, tokenName, acceptUrl, declin
     `If you did not expect this email, you can safely ignore it.`,
   ].join('\n');
 
+  // HTML-escape user-supplied values to prevent XSS in email clients
+  const safeOrgName = escapeHtml(orgName);
+  const safeTokenName = escapeHtml(tokenName);
+
   const html = `
     <p>Hello,</p>
-    <p><strong>${orgName}</strong> would like to send you mail arrival notifications for the token named <strong>"${tokenName}"</strong>.</p>
+    <p><strong>${safeOrgName}</strong> would like to send you mail arrival notifications for the token named <strong>"${safeTokenName}"</strong>.</p>
     <h3>What data is stored</h3>
     <ul>
       <li>Your email address</li>
