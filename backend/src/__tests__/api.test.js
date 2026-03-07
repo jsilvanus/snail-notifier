@@ -1,11 +1,13 @@
-'use strict';
+import { jest } from '@jest/globals';
+import request from 'supertest';
 
 process.env.DATABASE_PATH = ':memory:';
 process.env.JWT_SECRET = 'test_secret';
 process.env.CONSENT_JWT_SECRET = 'test_consent_secret';
 
-const request = require('supertest');
-const app = require('../index');
+// Dynamic import so env vars are set before the modules initialise
+const { default: app } = await import('../index.js');
+const { default: db } = await import('../db/index.js');
 
 describe('Health', () => {
   it('GET /api/health returns ok', async () => {
@@ -235,7 +237,6 @@ describe('Token invite & consent flow', () => {
     expect(res.body.length).toBe(1);
     expect(res.body[0].status).toBe('pending');
     // Extract consent token from DB for subsequent tests
-    const db = require('../db');
     const membership = db.prepare('SELECT consent_token FROM token_memberships').get();
     consentJwt = membership.consent_token;
   });
@@ -346,7 +347,6 @@ describe('Channel prefs and user channels', () => {
       .set('Authorization', `Bearer ${org.body.token}`)
       .send({ email: 'chanuser@example.com' });
 
-    const db = require('../db');
     const mem = db.prepare("SELECT * FROM token_memberships WHERE status='pending'").get();
     // Auto-accept for test
     db.prepare("UPDATE token_memberships SET status='accepted' WHERE id=?").run(mem.id);

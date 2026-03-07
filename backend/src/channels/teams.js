@@ -1,5 +1,3 @@
-'use strict';
-
 /** Microsoft Teams via Incoming Webhook — sends an Adaptive Card message. */
 async function sendTeams(webhookUrl, title, text) {
   if (!webhookUrl) {
@@ -28,4 +26,4 @@ async function sendTeams(webhookUrl, title, text) {
   if (!res.ok) throw new Error(`Teams webhook error: ${res.status}`);
 }
 
-module.exports = { sendTeams };
+export { sendTeams };

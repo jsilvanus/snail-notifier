@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Notification / push-subscription routes.
  * POST /api/notifications/subscribe    – End-user saves their push subscription
@@ -8,10 +6,12 @@
  * GET  /api/notifications/vapid-key    – Return VAPID public key (no auth)
  */
 
-const router = require('express').Router();
-const webpush = require('web-push');
-const db = require('../db');
-const auth = require('../middleware/auth');
+import express from 'express';
+import webpush from 'web-push';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
+
+const router = express.Router();
 
 // Configure VAPID if keys are provided
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
@@ -71,5 +71,5 @@ router.get('/', auth, (req, res) => {
   return res.json(rows);
 });
 
-module.exports = router;
-module.exports.sendPushNotification = sendPushNotification;
+export default router;
+export { sendPushNotification };

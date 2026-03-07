@@ -1,8 +1,9 @@
-'use strict';
+import Database from 'better-sqlite3';
+import path from 'path';
+import fs from 'fs';
+import { fileURLToPath } from 'url';
 
-const Database = require('better-sqlite3');
-const path = require('path');
-const fs = require('fs');
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const DB_PATH = process.env.DATABASE_PATH || path.join(__dirname, '../../data/snail.db');
 
@@ -72,7 +73,6 @@ db.exec(`
     sent_at     TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  -- Many-to-many join: which end_users are members of which tokens, with consent status
   CREATE TABLE IF NOT EXISTS token_memberships (
     id            TEXT PRIMARY KEY,
     token_id      TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
@@ -86,7 +86,6 @@ db.exec(`
     UNIQUE(token_id, end_user_id)
   );
 
-  -- Input fields for data_input tokens
   CREATE TABLE IF NOT EXISTS token_input_fields (
     id           TEXT PRIMARY KEY,
     token_id     TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
@@ -98,7 +97,6 @@ db.exec(`
     sort_order   INTEGER NOT NULL DEFAULT 0
   );
 
-  -- Per-membership channel preferences (which channels are enabled for a user on a token)
   CREATE TABLE IF NOT EXISTS member_channel_prefs (
     id            TEXT PRIMARY KEY,
     membership_id TEXT NOT NULL REFERENCES token_memberships(id) ON DELETE CASCADE,
@@ -107,7 +105,6 @@ db.exec(`
     UNIQUE(membership_id, channel)
   );
 
-  -- Per-user channel contact info (e.g. phone number for SMS, telegram chat_id)
   CREATE TABLE IF NOT EXISTS end_user_channels (
     id          TEXT PRIMARY KEY,
     end_user_id TEXT NOT NULL REFERENCES end_users(id) ON DELETE CASCADE,
@@ -118,8 +115,6 @@ db.exec(`
     UNIQUE(end_user_id, channel)
   );
 
-
-  -- Per-channel message templates for a token (overrides default notification_message)
   CREATE TABLE IF NOT EXISTS token_channel_messages (
     id           TEXT PRIMARY KEY,
     token_id     TEXT NOT NULL REFERENCES codes(id) ON DELETE CASCADE,
@@ -127,28 +122,26 @@ db.exec(`
     message_template TEXT NOT NULL,
     UNIQUE(token_id, channel)
   );
-  -- Notifier app: named layouts (shared via a short code)
+
   CREATE TABLE IF NOT EXISTS notifier_layouts (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
-    share_code  TEXT UNIQUE NOT NULL,  -- short human-readable code e.g. "ABC123"
+    share_code  TEXT UNIQUE NOT NULL,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  -- Buttons within a layout: either a scan token or a link to another layout
   CREATE TABLE IF NOT EXISTS layout_buttons (
     id                TEXT PRIMARY KEY,
     layout_id         TEXT NOT NULL REFERENCES notifier_layouts(id) ON DELETE CASCADE,
     button_type       TEXT NOT NULL DEFAULT 'token' CHECK(button_type IN ('token','layout')),
     label             TEXT,
     color             TEXT DEFAULT '#dbeafe',
-    scan_token        TEXT,                   -- for button_type = 'token'
-    target_layout_id  TEXT REFERENCES notifier_layouts(id) ON DELETE SET NULL, -- for button_type = 'layout'
+    scan_token        TEXT,
+    target_layout_id  TEXT REFERENCES notifier_layouts(id) ON DELETE SET NULL,
     sort_order        INTEGER NOT NULL DEFAULT 0,
     created_at        TEXT NOT NULL DEFAULT (datetime('now'))
   );
 
-  -- Delayed/queued notifications (for vacation mode)
   CREATE TABLE IF NOT EXISTS notification_queue (
     id             TEXT PRIMARY KEY,
     membership_id  TEXT NOT NULL REFERENCES token_memberships(id) ON DELETE CASCADE,
@@ -159,4 +152,4 @@ db.exec(`
   );
 `);
 
-module.exports = db;
+export default db;

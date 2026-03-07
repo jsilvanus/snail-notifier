@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Auth routes for organizations and their users.
  * POST /api/auth/org/register  – Register a new organization (first admin user)
@@ -8,12 +6,13 @@
  * POST /api/auth/user/login    – Login as an end-user
  */
 
-const router = require('express').Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
 
+const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret';
 const SALT_ROUNDS = 10;
 
@@ -24,7 +23,6 @@ router.post('/org/register', (req, res) => {
     return res.status(400).json({ error: 'orgName, name, email and password are required' });
   }
 
-  // Check org email not taken
   const existing = db.prepare('SELECT id FROM organizations WHERE email = ?').get(email);
   if (existing) return res.status(409).json({ error: 'Email already registered' });
 
@@ -86,4 +84,4 @@ router.post('/user/login', (req, res) => {
   return res.json({ token, userId: user.id });
 });
 
-module.exports = router;
+export default router;

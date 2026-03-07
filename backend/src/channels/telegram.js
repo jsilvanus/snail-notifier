@@ -1,5 +1,3 @@
-'use strict';
-
 async function sendTelegram(chatId, text) {
   if (!process.env.TELEGRAM_BOT_TOKEN) {
     console.log(`[telegram stub] Chat: ${chatId} | Text: ${text}`);
@@ -13,4 +11,4 @@ async function sendTelegram(chatId, text) {
   if (!res.ok) throw new Error(`Telegram API error: ${res.status}`);
 }
 
-module.exports = { sendTelegram };
+export { sendTelegram };

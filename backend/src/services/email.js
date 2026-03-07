@@ -1,16 +1,14 @@
-'use strict';
-
 /**
  * Email delivery adapter using nodemailer.
  * Falls back to console logging when SMTP is not configured (useful in dev/test).
  */
 
+import nodemailer from 'nodemailer';
+
 let transporter = null;
 
 function getTransporter() {
   if (transporter) return transporter;
-
-  const nodemailer = require('nodemailer');
 
   if (process.env.SMTP_HOST) {
     transporter = nodemailer.createTransport({
@@ -101,4 +99,4 @@ async function sendNotificationEmail({ toEmail, subject, body }) {
   return sendEmail({ to: toEmail, subject, text: body });
 }
 
-module.exports = { sendEmail, sendConsentEmail, sendNotificationEmail };
+export { sendEmail, sendConsentEmail, sendNotificationEmail };

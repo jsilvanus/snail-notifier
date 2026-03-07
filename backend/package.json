@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "description": "Snail-Notifier Express backend",
   "main": "src/index.js",
-  "type": "commonjs",
+  "type": "module",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node src/index.js",
     "dev": "nodemon src/index.js",
-    "test": "jest --forceExit"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --forceExit"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",

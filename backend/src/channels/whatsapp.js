@@ -1,17 +1,16 @@
-'use strict';
-
-const { getTwilioClient } = require('./twilio-client');
+import { getTwilioClient } from './twilio-client.js';
 
 async function sendWhatsApp(to, body) {
   if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
     console.log(`[whatsapp stub] To: ${to} | Body: ${body}`);
     return;
   }
-  await getTwilioClient().messages.create({
+  const client = await getTwilioClient();
+  await client.messages.create({
     body,
     from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`,
     to: `whatsapp:${to}`,
   });
 }
 
-module.exports = { sendWhatsApp };
+export { sendWhatsApp };

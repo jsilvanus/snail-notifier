@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Token consent / membership routes.
  *
@@ -15,13 +13,14 @@
  * PUT    /api/users/me/channels            — Upsert a contact detail
  */
 
-const router = require('express').Router();
-const jwt = require('jsonwebtoken');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
-const auth = require('../middleware/auth');
-const { sendConsentEmail } = require('../services/email');
+import express from 'express';
+import jwt from 'jsonwebtoken';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
+import { sendConsentEmail } from '../services/email.js';
 
+const router = express.Router();
 const CONSENT_SECRET = process.env.CONSENT_JWT_SECRET || process.env.JWT_SECRET || 'dev_secret';
 const PUBLIC_URL = process.env.PUBLIC_URL || 'http://localhost:3001';
 const USER_PWA_URL = process.env.USER_PWA_URL || 'http://localhost:5174';
@@ -272,4 +271,4 @@ router.put('/users/me/channels', auth, (req, res) => {
   return res.json({ success: true, verified: false, note: 'Verification pending — OTP flow not yet implemented' });
 });
 
-module.exports = router;
+export default router;

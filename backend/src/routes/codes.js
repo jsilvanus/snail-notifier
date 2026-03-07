@@ -1,15 +1,14 @@
-'use strict';
-
 /**
  * Code management routes.
  */
 
-const router = require('express').Router();
-const QRCode = require('qrcode');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
-const auth = require('../middleware/auth');
+import express from 'express';
+import QRCode from 'qrcode';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
 
+const router = express.Router();
 const CHANNELS = ['general', 'push', 'email', 'sms', 'whatsapp', 'telegram', 'slack', 'teams'];
 
 function requireOrg(req, res) {
@@ -167,4 +166,4 @@ router.delete('/:id/messages/:channel', auth, (req, res) => {
   return res.json({ success: true });
 });
 
-module.exports = router;
+export default router;

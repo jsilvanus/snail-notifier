@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Public scan endpoint.
  *
@@ -8,9 +6,11 @@
  * GET  /api/scan/:token/info   — lightweight token info (for notifier app)
  */
 
-const router = require('express').Router();
-const db = require('../db');
-const { dispatchToMembership } = require('../services/dispatcher');
+import express from 'express';
+import db from '../db/index.js';
+import { dispatchToMembership } from '../services/dispatcher.js';
+
+const router = express.Router();
 
 router.get('/:token/info', (req, res) => {
   const code = db.prepare('SELECT id, name, title, description, behavior, mailbox_label, scan_token, type FROM codes WHERE scan_token = ?').get(req.params.token);
@@ -62,4 +62,4 @@ async function notifyMembers(code, responses) {
   return results;
 }
 
-module.exports = router;
+export default router;

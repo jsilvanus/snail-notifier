@@ -1,5 +1,3 @@
-'use strict';
-
 async function sendSlack(webhookUrl, text) {
   if (!webhookUrl) {
     console.log(`[slack stub] Text: ${text}`);
@@ -13,4 +11,4 @@ async function sendSlack(webhookUrl, text) {
   if (!res.ok) throw new Error(`Slack webhook error: ${res.status}`);
 }
 
-module.exports = { sendSlack };
+export { sendSlack };

@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Notifier layout routes — no auth required (share-code is the secret).
  *
@@ -13,9 +11,11 @@
  * PUT    /api/layouts/:shareCode/buttons/order   – Reorder (body: { order: [id, id, …] })
  */
 
-const router = require('express').Router();
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
+import express from 'express';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+
+const router = express.Router();
 
 function generateShareCode() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; // no I/O/0/1
@@ -119,7 +119,6 @@ router.post('/:shareCode/buttons', (req, res) => {
     targetLayoutId = target.id;
   } else {
     if (!scan_token) return res.status(400).json({ error: 'scan_token required for token buttons' });
-    // Validate scan_token exists
     const code = db.prepare('SELECT id FROM codes WHERE scan_token = ?').get(scan_token);
     if (!code) return res.status(404).json({ error: 'Scan token not found' });
   }
@@ -184,4 +183,4 @@ router.put('/:shareCode/buttons/order', (req, res) => {
   return res.json({ success: true });
 });
 
-module.exports = router;
+export default router;

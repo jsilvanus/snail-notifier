@@ -1,19 +1,18 @@
-'use strict';
+import 'dotenv/config';
+import { fileURLToPath } from 'url';
 
-require('dotenv').config();
+import express from 'express';
+import cors from 'cors';
+import rateLimit from 'express-rate-limit';
 
-const express = require('express');
-const cors = require('cors');
-const rateLimit = require('express-rate-limit');
-
-const authRouter = require('./routes/auth');
-const usersRouter = require('./routes/users');
-const codesRouter = require('./routes/codes');
-const scanRouter = require('./routes/scan');
-const notificationsRouter = require('./routes/notifications');
-const consentRouter = require('./routes/consent');
-const layoutsRouter = require('./routes/layouts');
-const { flushNotificationQueue } = require('./services/dispatcher');
+import authRouter from './routes/auth.js';
+import usersRouter from './routes/users.js';
+import codesRouter from './routes/codes.js';
+import scanRouter from './routes/scan.js';
+import notificationsRouter from './routes/notifications.js';
+import consentRouter from './routes/consent.js';
+import layoutsRouter from './routes/layouts.js';
+import { flushNotificationQueue } from './services/dispatcher.js';
 
 const app = express();
 
@@ -70,10 +69,12 @@ app.use((err, _req, res, _next) => {
 });
 
 const PORT = process.env.PORT || 3001;
-if (require.main === module) {
+
+// Start server only when run directly (not when imported by tests)
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => console.log(`Snail-Notifier backend listening on port ${PORT}`));
   // Background worker: flush queued notifications every 60 seconds
   setInterval(() => flushNotificationQueue().catch(console.error), 60_000);
 }
 
-module.exports = app;
+export default app;

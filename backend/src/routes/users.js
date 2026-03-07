@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Org-user management routes (admin only).
  * GET  /api/users          – List org users
@@ -7,12 +5,13 @@
  * DELETE /api/users/:id    – Remove an org user
  */
 
-const router = require('express').Router();
-const bcrypt = require('bcryptjs');
-const { v4: uuidv4 } = require('uuid');
-const db = require('../db');
-const auth = require('../middleware/auth');
+import express from 'express';
+import bcrypt from 'bcryptjs';
+import { v4 as uuidv4 } from 'uuid';
+import db from '../db/index.js';
+import auth from '../middleware/auth.js';
 
+const router = express.Router();
 const SALT_ROUNDS = 10;
 
 // All routes require an authenticated org user
@@ -56,4 +55,4 @@ router.delete('/:id', (req, res) => {
   return res.json({ success: true });
 });
 
-module.exports = router;
+export default router;

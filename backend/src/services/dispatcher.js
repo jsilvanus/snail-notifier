@@ -1,5 +1,3 @@
-'use strict';
-
 /**
  * Notification dispatcher.
  * Channels: push | email | sms | whatsapp | telegram | slack | teams
@@ -7,15 +5,15 @@
  * Template syntax: use {FIELDLABEL} to interpolate form responses, e.g. "{name} wants to contact you."
  */
 
-const db = require('../db');
-const { sendPushNotification } = require('../routes/notifications');
-const { sendNotificationEmail } = require('./email');
-const { sendSms } = require('../channels/sms');
-const { sendWhatsApp } = require('../channels/whatsapp');
-const { sendTelegram } = require('../channels/telegram');
-const { sendSlack } = require('../channels/slack');
-const { sendTeams } = require('../channels/teams');
-const { v4: uuidv4 } = require('uuid');
+import db from '../db/index.js';
+import { sendPushNotification } from '../routes/notifications.js';
+import { sendNotificationEmail } from './email.js';
+import { sendSms } from '../channels/sms.js';
+import { sendWhatsApp } from '../channels/whatsapp.js';
+import { sendTelegram } from '../channels/telegram.js';
+import { sendSlack } from '../channels/slack.js';
+import { sendTeams } from '../channels/teams.js';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Resolve the notification message for a channel, using:
@@ -190,4 +188,4 @@ async function flushNotificationQueue() {
   }
 }
 
-module.exports = { dispatchToMembership, flushNotificationQueue };
+export { dispatchToMembership, flushNotificationQueue };
