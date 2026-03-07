@@ -72,4 +72,3 @@ router.get('/', auth, (req, res) => {
 });
 
 export default router;
-export { sendPushNotification };
