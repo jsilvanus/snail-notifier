@@ -95,7 +95,9 @@ export default function Board() {
     try {
       const data = await api.getLayout(shareCode);
       setLayout(data);
-      // Auto-save to local state so it appears in LayoutList
+      // Auto-bookmark: persist this layout to localStorage so it appears in LayoutList
+      // without requiring the user to manually save it. This is an intentional side effect
+      // of loading a board — every visit reinforces the bookmark.
       addSavedLayout(data.share_code, data.name);
     } catch (err) {
       setError('Layout not found or could not be loaded.');

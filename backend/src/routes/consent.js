@@ -133,11 +133,14 @@ router.get('/consent/:consentToken/decline', (req, res) => {
     return res.status(400).send('<h2>This link has expired or is invalid.</h2>');
   }
 
+  const membership = db.prepare('SELECT * FROM token_memberships WHERE id = ?').get(payload.membershipId);
+  if (!membership) return res.status(404).send('<h2>Invitation not found.</h2>');
+
   db.prepare(`
     UPDATE token_memberships
     SET status = 'declined', responded_at = datetime('now')
     WHERE id = ?
-  `).run(payload.membershipId);
+  `).run(membership.id);
 
   return res.send(`
     <html><body style="font-family:sans-serif;max-width:500px;margin:4rem auto;text-align:center">
