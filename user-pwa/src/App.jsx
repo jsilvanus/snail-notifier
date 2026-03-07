@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth';
 import Header from './components/Header';
 import Login from './pages/Login';
 import Notifications from './pages/Notifications';
+import Tokens from './pages/Tokens';
 
 function PrivateRoute({ children }) {
   const { isAuth } = useAuth();
@@ -28,6 +29,11 @@ export default function App() {
           <Route path="/notifications" element={
             <PrivateRoute>
               <Layout><Notifications /></Layout>
+            </PrivateRoute>
+          } />
+          <Route path="/tokens" element={
+            <PrivateRoute>
+              <Layout><Tokens /></Layout>
             </PrivateRoute>
           } />
           <Route path="*" element={<Navigate to="/notifications" replace />} />

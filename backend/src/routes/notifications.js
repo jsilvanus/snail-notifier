@@ -6,12 +6,12 @@
  * GET    /api/notifications/vapid-key    – Return VAPID public key (no auth)
  */
 
-import { Router } from 'express';
+import express from 'express';
 import webpush from 'web-push';
 import db from '../db/index.js';
 import auth from '../middleware/auth.js';
 
-const router = Router();
+const router = express.Router();
 
 // Configure VAPID if keys are provided
 if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {

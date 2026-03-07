@@ -6,6 +6,7 @@ import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import Codes from './pages/Codes';
 import CreateCode from './pages/CreateCode';
+import CodeDetail from './pages/CodeDetail';
 import Users from './pages/Users';
 
 function PrivateRoute({ children }) {
@@ -36,6 +37,9 @@ export default function App() {
           } />
           <Route path="/codes/new" element={
             <PrivateRoute><Layout><CreateCode /></Layout></PrivateRoute>
+          } />
+          <Route path="/codes/:id" element={
+            <PrivateRoute><Layout><CodeDetail /></Layout></PrivateRoute>
           } />
           <Route path="/users" element={
             <PrivateRoute><Layout><Users /></Layout></PrivateRoute>

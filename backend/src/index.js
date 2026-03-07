@@ -10,8 +10,9 @@ import usersRouter from './routes/users.js';
 import codesRouter from './routes/codes.js';
 import scanRouter from './routes/scan.js';
 import notificationsRouter from './routes/notifications.js';
+import consentRouter from './routes/consent.js';
 import layoutsRouter from './routes/layouts.js';
-import { flushNotificationQueue } from './dispatcher.js';
+import { flushNotificationQueue } from './services/dispatcher.js';
 
 const app = express();
 
@@ -20,27 +21,24 @@ app.use(express.json());
 
 // ── Rate limiters ────────────────────────────────────────────────────────────
 
-// Strict limiter for authentication endpoints (brute-force protection)
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many requests, please try again later' },
 });
 
-// Moderate limiter for scan endpoint (mail carriers may scan in bursts)
 const scanLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: 60,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: 'Too many scan requests, please try again later' },
 });
 
-// General API limiter
 const apiLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: 60 * 1000,
   max: 120,
   standardHeaders: true,
   legacyHeaders: false,
@@ -56,6 +54,8 @@ app.use('/api/scan', scanLimiter, scanRouter);
 app.use('/api/users', apiLimiter, usersRouter);
 app.use('/api/codes', apiLimiter, codesRouter);
 app.use('/api/notifications', apiLimiter, notificationsRouter);
+// Consent + membership routes — mounted at /api for clean paths like /api/tokens/:id/invite
+app.use('/api', apiLimiter, consentRouter);
 app.use('/api/layouts', apiLimiter, layoutsRouter);
 
 // 404
@@ -70,14 +70,11 @@ app.use((err, _req, res, _next) => {
 
 const PORT = process.env.PORT || 3001;
 
-// Only start the server and background jobs when run directly (not imported by tests).
-// The flushNotificationQueue interval is intentionally guarded here so it does
-// not leak into test runs.
+// Start server only when run directly (not when imported by tests)
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   app.listen(PORT, () => console.log(`Snail-Notifier backend listening on port ${PORT}`));
-
-  const FLUSH_INTERVAL_MS = 30_000; // 30 seconds
-  setInterval(flushNotificationQueue, FLUSH_INTERVAL_MS);
+  // Background worker: flush queued notifications every 60 seconds
+  setInterval(() => flushNotificationQueue().catch(console.error), 60_000);
 }
 
 export default app;

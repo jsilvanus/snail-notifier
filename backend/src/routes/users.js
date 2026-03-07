@@ -5,13 +5,13 @@
  * DELETE /api/users/:id   – Remove an org user
  */
 
-import { Router } from 'express';
+import express from 'express';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import db from '../db/index.js';
 import auth from '../middleware/auth.js';
 
-const router = Router();
+const router = express.Router();
 const SALT_ROUNDS = 10;
 
 // All routes require an authenticated org user
