@@ -1,8 +1,8 @@
 /**
  * Org-user management routes (admin only).
- * GET  /api/users          – List org users
- * POST /api/users          – Invite / create a new org user
- * DELETE /api/users/:id    – Remove an org user
+ * GET    /api/users       – List org users
+ * POST   /api/users       – Invite / create a new org user
+ * DELETE /api/users/:id   – Remove an org user
  */
 
 import express from 'express';

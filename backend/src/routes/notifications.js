@@ -1,9 +1,9 @@
 /**
  * Notification / push-subscription routes.
- * POST /api/notifications/subscribe    – End-user saves their push subscription
- * DELETE /api/notifications/subscribe  – End-user removes their push subscription
- * GET  /api/notifications              – End-user polls for their recent notifications
- * GET  /api/notifications/vapid-key    – Return VAPID public key (no auth)
+ * POST   /api/notifications/subscribe    – End-user saves their push subscription
+ * DELETE /api/notifications/subscribe    – End-user removes their push subscription
+ * GET    /api/notifications              – End-user polls for their recent notifications
+ * GET    /api/notifications/vapid-key    – Return VAPID public key (no auth)
  */
 
 import express from 'express';
@@ -27,7 +27,7 @@ if (process.env.VAPID_PUBLIC_KEY && process.env.VAPID_PRIVATE_KEY) {
  * @param {object} subscription  – PushSubscription JSON
  * @param {object} payload       – { title, body, url }
  */
-async function sendPushNotification(subscription, payload) {
+export async function sendPushNotification(subscription, payload) {
   return webpush.sendNotification(subscription, JSON.stringify(payload));
 }
 
