@@ -10,6 +10,11 @@
 const db = require('../db');
 const { sendPushNotification } = require('../routes/notifications');
 const { sendNotificationEmail } = require('./email');
+const { sendSms } = require('../channels/sms');
+const { sendWhatsApp } = require('../channels/whatsapp');
+const { sendTelegram } = require('../channels/telegram');
+const { sendSlack } = require('../channels/slack');
+const { sendTeams } = require('../channels/teams');
 const { v4: uuidv4 } = require('uuid');
 
 /**
@@ -150,68 +155,6 @@ async function dispatchChannel(channel, endUser, payload, _code) {
     default:
       throw new Error(`unknown channel: ${channel}`);
   }
-}
-
-// ── Channel adapters ─────────────────────────────────────────────────────────
-
-async function sendSms(to, body) {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    console.log(`[sms stub] To: ${to} | Body: ${body}`); return;
-  }
-  const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-  await client.messages.create({ body, from: process.env.TWILIO_PHONE_FROM, to });
-}
-
-async function sendWhatsApp(to, body) {
-  if (!process.env.TWILIO_ACCOUNT_SID || !process.env.TWILIO_AUTH_TOKEN) {
-    console.log(`[whatsapp stub] To: ${to} | Body: ${body}`); return;
-  }
-  const client = require('twilio')(process.env.TWILIO_ACCOUNT_SID, process.env.TWILIO_AUTH_TOKEN);
-  await client.messages.create({ body, from: `whatsapp:${process.env.TWILIO_WHATSAPP_FROM}`, to: `whatsapp:${to}` });
-}
-
-async function sendTelegram(chatId, text) {
-  if (!process.env.TELEGRAM_BOT_TOKEN) {
-    console.log(`[telegram stub] Chat: ${chatId} | Text: ${text}`); return;
-  }
-  const res = await fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ chat_id: chatId, text }),
-  });
-  if (!res.ok) throw new Error(`Telegram API error: ${res.status}`);
-}
-
-async function sendSlack(webhookUrl, text) {
-  if (!webhookUrl) { console.log(`[slack stub] Text: ${text}`); return; }
-  const res = await fetch(webhookUrl, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ text }),
-  });
-  if (!res.ok) throw new Error(`Slack webhook error: ${res.status}`);
-}
-
-/** Microsoft Teams via Incoming Webhook — sends an Adaptive Card style message */
-async function sendTeams(webhookUrl, title, text) {
-  if (!webhookUrl) { console.log(`[teams stub] Title: ${title} | Text: ${text}`); return; }
-  const body = {
-    type: 'message',
-    attachments: [{
-      contentType: 'application/vnd.microsoft.card.adaptive',
-      content: {
-        type: 'AdaptiveCard',
-        version: '1.4',
-        body: [
-          { type: 'TextBlock', size: 'Medium', weight: 'Bolder', text: title },
-          { type: 'TextBlock', wrap: true, text },
-        ],
-      },
-    }],
-  };
-  const res = await fetch(webhookUrl, {
-    method: 'POST', headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!res.ok) throw new Error(`Teams webhook error: ${res.status}`);
 }
 
 // ── Background queue worker ──────────────────────────────────────────────────
